@@ -1,5 +1,6 @@
 import pandas as pd 
 import numpy as np 
+from collections import defaultdict #For missing keys
 
 #   Very simple
 #   ESS = Σ Σ (xij - x̄i)²
@@ -16,60 +17,113 @@ import numpy as np
 def euclidean_distance(centroid1, centroid2):
     return np.sqrt(np.sum((centroid1 - centroid2) ** 2))
 
-def calculate_centroid(data, cluster_label):
-    cluster_mask = cluster_labels == cluster_label
-    cluster_points = data[cluster_mask]
-    return np.mean(cluster_points, axis=0)
+class ClusterInfo: #I want to keep everything organized in one place
+    def __init__(self, data):
+        self.cluster_sizes = {i: 1 for i in range(len(data))}  #Keep track of size of each cluster, instead of recounting
+        self.centroids = {i: data[i] for i in range(len(data))}  #Keeps track of cluster center for each data, instead of recalculating
 
-def merge_clusters(data, label1, label2):
-    global cluster_labels
-    cluster_labels[cluster_labels == label2] = label1
-    new_distance_matrix, unique_labels = make_distance_matrix(data)
-    return new_distance_matrix, unique_labels
+        self.distances = defaultdict(dict) #ABSOLUTE FUCKING OVERKILL, we should already know whether points exist or not given the fact that we create them in order but I want to use something new anyway, also less checks :D
+        self._initialize_distances(data)
+    
+    def _initialize_distances(self, data):
+        for i in range(len(data)):
+            for j in range(i + 1, len(data)): #Only upper traingle for speed purposes
+                distance = self._calculate_ward_distance(i, j)
+                self.distances[i][j] = distance
+    
+    def _calculate_ward_distance(self, label1, label2):
+        n1 = self.cluster_sizes[label1]
+        n2 = self.cluster_sizes[label2]
+        centroid1 = self.centroids[label1]
+        centroid2 = self.centroids[label2]
 
-def wards_criterion(data, label1, label2):
-    cluster1_mask = cluster_labels == label1
-    cluster2_mask = cluster_labels == label2
-    n1 = np.sum(cluster1_mask)
-    n2 = np.sum(cluster2_mask)
+        squared_dist = euclidean_distance(centroid1, centroid2) ** 2
+        return (n1 * n2) / (n1 + n2) * squared_dist
     
-    centroid1 = calculate_centroid(data, label1)
-    centroid2 = calculate_centroid(data, label2)
-    squared_dist = euclidean_distance(centroid1, centroid2) ** 2
-    ward_distance = (n1 * n2) / (n1 + n2) * squared_dist
-    
-    return ward_distance
+    def find_closest_clusters(self):
+        min_distance = float('inf') #Maybe better way exists
+        min_pair = None
 
-def make_distance_matrix(data):
-    ##Check your notebook for a more efficent data structure for this.
-    ##Takes too long with a matrix
-    unique_labels = np.unique(cluster_labels)
-    n_clusters = len(unique_labels)
-    distance_matrix = np.zeros((n_clusters, n_clusters))
+        for label1 in self.distances:
+            for label2, distance in self.distances[label1].items():
+                if distance < min_distance:
+                    min_distance = distance
+                    min_pair = (label1, label2)
+
+        if min_pair == None:
+            return (None, float('inf'))
+        else:
+            return min_pair, min_distance        
+
+    def update_cluster(self, label1, label2):
+        ##Merge label 2 INTO label 1
+
+
+        #NOTE: To future me
+
+        #FIRST update cluster properties
+        n1 = self.cluster_sizes[label1]
+        n2 = self.cluster_sizes[label2]
+        c1 = self.centroids[label1]
+        c2 = self.centroids[label2]
+        new_size = n1 + n2
+        new_centroid = (n1 * c1 + n2 * c2) / new_size
+
+        #SECOND update tracking dictionaries
+        self.cluster_sizes[label1] = new_size
+        self.centroids[label1] = new_centroid
+        self.cluster_sizes.pop(label2)
+        self.centroids.pop(label2)
+
+        #THIRD handle the distances
+        self._update_distances(label1, label2)
     
-    label_to_idx = {label: idx for idx, label in enumerate(unique_labels)} #Index Mapping
-    
-    for i, label1 in enumerate(unique_labels):
-        for j, label2 in enumerate(unique_labels[i+1:], i+1): #Only top half of the triangle
-            distance = wards_criterion(data, label1, label2)
-            idx1, idx2 = label_to_idx[label1], label_to_idx[label2]
-            distance_matrix[idx1, idx2] = distance
-            distance_matrix[idx2, idx1] = distance  #Matrix is symmetrical
-    
-    np.fill_diagonal(distance_matrix, np.inf) #So self clustering doesnt occur
-    return distance_matrix, unique_labels
+    def _update_distances(self, label1, label2):
+
+        if label2 in self.distances:
+            del self.distances[label2]
+        for label in self.distances:
+            if label2 in self.distances[label]:
+                del self.distances[label][label2]
+        
+        existing_labels = list(self.cluster_sizes.keys()) #List, set, anything between doesnt matter.
+        
+        for cluster_id in existing_labels:
+            if cluster_id != label1:
+
+                ##According to wizards
+
+                #In a nested dictionary
+                #We want larger labels as data and smaller labels as keys
+                #Apparently it avoids duplications
+
+                #If you ask me it looks beautiful
+
+                # distances{
+                #   0: {1: n, 2: n}:
+                #   1: {2: n}
+                #   2: {}
+                #}
+                
+                smaller_cluster = min(label1, cluster_id) #Outer key
+                larger_cluster = max(label1, cluster_id) #Inner key
+                self.distances[smaller_cluster][larger_cluster] = self._calculate_ward_distance(smaller_cluster, larger_cluster)
 
 def hierarchical_cluster(data, n_clusters=2):
-    global cluster_labels
     cluster_labels = np.arange(len(data))
-    
+    cluster_info = ClusterInfo(data)
+
     while len(np.unique(cluster_labels)) > n_clusters:
-        distance_matrix, unique_labels = make_distance_matrix(data)
-        min_idx = np.unravel_index(np.argmin(distance_matrix), distance_matrix.shape) #For matrix
-        label1, label2 = unique_labels[min_idx[0]], unique_labels[min_idx[1]]
-        distance_matrix, unique_labels = merge_clusters(data, label1, label2)
+        (label1, label2), min_distance = cluster_info.find_closest_clusters()
+
+        if label1 is None:
+            break
+
+        cluster_labels[cluster_labels == label2] = label1 #Array masking black magic I found on the deep web.
+        cluster_info.update_cluster(label1, label2) # Also check notebook on how array masking works
+        
         print(f"Merged {label1}, {label2}")
-        print(unique_labels)
+        print(np.unique(cluster_labels))
     
     return cluster_labels
 
