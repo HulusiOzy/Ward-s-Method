@@ -1,6 +1,7 @@
 import pandas as pd 
 import numpy as np 
 from collections import defaultdict
+import os
 
 #   Very simple
 #   ESS = Σ Σ (xij - x̄i)²
@@ -132,7 +133,10 @@ Y = df.to_numpy()
 cluster_labels = np.arange(len(Y))
 final_labels = hierarchical_cluster(Y, n_clusters=2)
 
-print("\nFinal cluster assignments:")
-assignments = [f"{i} = {final_labels[i]}" for i in range(len(final_labels))]
-print("[" + ", ".join(assignments) + "]")
-open('final_labels.txt', 'w').write(", ".join(assignments))
+input_filename = 'heart_failure_clinical_records_dataset.csv.data'
+base_filename = input_filename.split('.')[0]  #Split for . bc im lazy :)
+output_filename = f"{base_filename}.predicted"
+
+with open(output_filename, 'w') as f: #Each on a new line to mimic rows, hopefully this works
+    for label in final_labels:
+        f.write(f"{label}\n")
