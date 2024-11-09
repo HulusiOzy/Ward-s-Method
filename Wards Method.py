@@ -1,6 +1,6 @@
 import pandas as pd 
 import numpy as np 
-from collections import defaultdict #For missing keys
+from collections import defaultdict
 
 #   Very simple
 #   ESS = Σ Σ (xij - x̄i)²
@@ -120,7 +120,7 @@ def hierarchical_cluster(data, n_clusters=2):
             break
 
         cluster_labels[cluster_labels == label2] = label1 #Array masking black magic I found on the deep web.
-        cluster_info.update_cluster(label1, label2) # Also check notebook on how array masking works
+        cluster_info.update_cluster(label1, label2) #Also check notebook on how array masking works
         
         print(f"Merged {label1}, {label2}")
         print(np.unique(cluster_labels))
