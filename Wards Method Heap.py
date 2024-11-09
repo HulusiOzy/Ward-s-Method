@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from collections import defaultdict
 import heapq
 
 def euclidean_distance(centroid1, centroid2):
@@ -79,9 +78,18 @@ def hierarchical_cluster(data, n_clusters=2):
         
         print(f"Merged {label1}, {label2}")
         print(np.unique(cluster_labels))
+
+    print("\nFinal cluster assignments:")
+    assignments = [f"{i} = {cluster_labels[i]}" for i in range(len(cluster_labels))]
+    print("[" + ", ".join(assignments) + "]")
     
     return cluster_labels
 
-df = pd.read_csv('ProcessedData.csv')
+df = pd.read_csv('heart_failure_clinical_records_dataset.csv.data', header = None)
 Y = df.to_numpy()
 final_labels = hierarchical_cluster(Y, n_clusters=1)
+
+print("\nFinal cluster assignments:")
+assignments = [f"{i} = {final_labels[i]}" for i in range(len(final_labels))]
+print("[" + ", ".join(assignments) + "]")
+open('final_labels.txt', 'w').write(", ".join(assignments))
