@@ -1,4 +1,4 @@
 # Wards-Method
 Really inefficent Ward's Method code.
 
-Dataset: [heart-failure-clinical-data](https://www.kaggle.com/datasets/andrewmvd/heart-failure-clinical-data)
+Dataset: [iris-dataset](https://archive.ics.uci.edu/dataset/53/iris)
