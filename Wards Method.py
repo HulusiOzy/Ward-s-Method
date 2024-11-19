@@ -128,12 +128,12 @@ def hierarchical_cluster(data, n_clusters=2):
 
     return cluster_labels
 
-df = pd.read_csv('heart_failure_clinical_records_dataset.csv.data', header = None)
+df = pd.read_csv('iris.data.data', header = None)
 Y = df.to_numpy()
 cluster_labels = np.arange(len(Y))
-final_labels = hierarchical_cluster(Y, n_clusters=2)
+final_labels = hierarchical_cluster(Y, n_clusters=3)
 
-input_filename = 'heart_failure_clinical_records_dataset.csv.data'
+input_filename = 'iris.data.data'
 base_filename = input_filename.split('.')[0]  #Split for . bc im lazy :)
 output_filename = f"{base_filename}.predicted"
 
